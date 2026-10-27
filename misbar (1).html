@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}html,body{height:100%}</style>
+<title>مسبار</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Readex+Pro:wght@500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: phone-first clinical app; on desktop the input panel sits on the right (RTL) and the radar dashboard fills the rest. */
+:root{
+  --bg:#F2F6F4; --surface:#FFFFFF; --sunk:#E8EFEC; --ink:#102B25; --muted:#5A6E68; --line:#D6E2DD;
+  --accent:#0A6A56; --accent-ink:#FFFFFF; --accent-soft:#DDEEE8;
+  --ok:#1C8A4C; --ok-soft:#E1F3E8; --warn:#B57A06; --warn-soft:#FBF0D9; --bad:#C2332A; --bad-soft:#FBE4E1;
+  --f-display:"Readex Pro","IBM Plex Sans Arabic",Tahoma,sans-serif;
+  --f-body:"IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0B1412; --surface:#121E1B; --sunk:#0F1916; --ink:#E4EFEB; --muted:#93A8A1; --line:#22332E;
+  --accent:#4BC19F; --accent-ink:#06231C; --accent-soft:#163029;
+  --ok:#4CC27D; --ok-soft:#14301F; --warn:#E5AE3C; --warn-soft:#33270F; --bad:#F06A5E; --bad-soft:#3A1715;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0B1412; --surface:#121E1B; --sunk:#0F1916; --ink:#E4EFEB; --muted:#93A8A1; --line:#22332E;
+  --accent:#4BC19F; --accent-ink:#06231C; --accent-soft:#163029;
+  --ok:#4CC27D; --ok-soft:#14301F; --warn:#E5AE3C; --warn-soft:#33270F; --bad:#F06A5E; --bad-soft:#3A1715;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.65}
+.app{direction:rtl;max-width:1180px;margin:0 auto;padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.3}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,textarea:focus-visible,input:focus-visible,label:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{width:44px;height:44px;border-radius:12px;background:var(--accent);display:grid;place-items:center}
+.mark svg{width:28px;height:28px}
+.brand h1{font-size:26px;font-weight:700;letter-spacing:0}
+.brand small{display:block;color:var(--muted);font-size:12.5px;font-family:var(--f-body);font-weight:500}
+.demo-tag{font-size:12px;font-weight:600;color:var(--warn);background:var(--warn-soft);border-radius:999px;padding:4px 12px}
+
+.sync{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;font-size:13.5px}
+.sync .dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 4px var(--ok-soft);flex:none}
+.sync .steps{display:flex;gap:6px;flex-wrap:wrap;margin-inline-start:auto}
+.sync .step{font-size:12px;color:var(--muted);background:var(--sunk);border-radius:6px;padding:2px 8px}
+.sync .step.done{color:var(--ok);background:var(--ok-soft)}
+
+.grid{display:grid;gap:18px;grid-template-columns:1fr}
+@media (min-width:980px){.grid{grid-template-columns:420px minmax(0,1fr);align-items:start}}
+.col{display:flex;flex-direction:column;gap:18px;min-width:0}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.label{font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--muted)}
+.ph{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.ph h2{font-size:16.5px;font-weight:600}
+
+/* profile */
+.profiles{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.patient{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.patient b{color:var(--ink);font-weight:600}
+.meds{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.med{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:var(--sunk);border-radius:10px;padding:10px 12px}
+.pill-ic{width:30px;height:30px;border-radius:8px;background:var(--accent-soft);display:grid;place-items:center;color:var(--accent)}
+.pill-ic svg{width:17px;height:17px}
+.med .n{font-weight:600;font-size:14.5px}
+.med .n span{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-weight:500;margin-inline-start:6px;direction:ltr;unicode-bidi:isolate}
+.med .s{font-size:12.5px;color:var(--muted)}
+.med .dose{font-family:var(--f-mono);font-size:13px;direction:ltr;text-align:left;white-space:nowrap}
+.src{font-size:11px;color:var(--accent);font-weight:600}
+
+/* mode + input */
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--sunk);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:transparent;border-radius:9px;padding:10px 8px;font-weight:600;font-size:14px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:1px}
+.seg button small{font-weight:400;font-size:11.5px}
+.seg button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+textarea{width:100%;min-height:108px;resize:vertical;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit;padding:12px 14px;line-height:1.7}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.tbtn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 12px;font-size:13.5px;font-weight:500}
+.tbtn svg{width:18px;height:18px;color:var(--accent)}
+.tbtn.rec{border-color:var(--bad);color:var(--bad)}
+.tbtn.rec svg{color:var(--bad)}
+.wave{display:flex;align-items:center;gap:3px;height:22px}
+.wave i{width:3px;border-radius:2px;background:var(--bad);height:30%;animation:w .9s ease-in-out infinite}
+.wave i:nth-child(2n){animation-delay:.15s}.wave i:nth-child(3n){animation-delay:.3s}
+@keyframes w{50%{height:100%}}
+.presets{display:flex;flex-direction:column;gap:6px}
+.preset{text-align:right;border:1px dashed var(--line);background:transparent;border-radius:10px;padding:8px 12px;font-size:13px;color:var(--muted)}
+.preset b{color:var(--ink);font-weight:600}
+.thumb{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.thumb img{width:56px;height:56px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+.thumb button{border:0;background:none;color:var(--bad);font-size:13px}
+.engine{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+.engine .chip{font-size:12px;padding:4px 10px}
+.go{border:0;background:var(--accent);color:var(--accent-ink);border-radius:12px;padding:14px;font-family:var(--f-display);font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px}
+.go:disabled{opacity:.6;cursor:progress}
+.stop{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px;font-size:14px}
+
+.redflags{border:1px solid var(--bad);background:var(--bad-soft);border-radius:12px;padding:10px 14px;font-size:13px;display:flex;gap:12px;align-items:center}
+.redflags .num{font-family:var(--f-display);font-weight:700;font-size:24px;color:var(--bad);direction:ltr;user-select:all;flex:none}
+
+/* dashboard */
+.dash{display:flex;flex-direction:column;gap:14px;min-width:0}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);padding:28px 22px;color:var(--muted);display:flex;flex-direction:column;gap:10px}
+.empty h2{color:var(--ink);font-size:19px}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.sec h3{font-size:15.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+.sec ul{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:6px}
+.sec ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;counter-reset:n}
+.sec ol li{display:grid;grid-template-columns:28px 1fr;gap:10px;counter-increment:n}
+.sec ol li::before{content:counter(n);font-family:var(--f-mono);font-size:13px;width:28px;height:28px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.sec ol li b{display:block;font-weight:600}
+.sec ol li span{color:var(--muted);font-size:14px}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{background:var(--sunk);border-radius:8px;padding:3px 10px;font-size:13px}
+.banner{color:var(--accent);font-weight:600;font-size:14px;background:var(--accent-soft);border-radius:10px;padding:10px 14px}
+
+.light{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;border-radius:var(--r);padding:16px 18px;border:1px solid}
+.light .lamp{width:46px;height:46px;border-radius:50%;flex:none}
+.light b{font-family:var(--f-display);font-size:17px;display:block}
+.light p{margin:0;font-size:14px}
+.light.green{background:var(--ok-soft);border-color:var(--ok)}.light.green .lamp{background:var(--ok);box-shadow:0 0 0 6px var(--ok-soft),0 0 18px var(--ok)}.light.green b{color:var(--ok)}
+.light.yellow{background:var(--warn-soft);border-color:var(--warn)}.light.yellow .lamp{background:var(--warn);box-shadow:0 0 0 6px var(--warn-soft),0 0 18px var(--warn)}.light.yellow b{color:var(--warn)}
+.light.red{background:var(--bad-soft);border-color:var(--bad)}.light.red .lamp{background:var(--bad);box-shadow:0 0 0 6px var(--bad-soft),0 0 18px var(--bad)}.light.red b{color:var(--bad)}
+.signals{display:flex;gap:6px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.signals span{display:inline-flex;align-items:center;gap:5px}
+.signals i{width:8px;height:8px;border-radius:50%}
+
+.emerg{background:var(--bad);color:#fff;border-radius:var(--r);padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+.emerg b{font-family:var(--f-display);font-size:18px}
+.emerg .big{font-family:var(--f-display);font-size:34px;font-weight:700;direction:ltr;user-select:all;line-height:1}
+.urgent{border:1px solid var(--bad);background:var(--bad-soft);border-radius:var(--r);padding:12px 16px;font-size:14px}
+.urgent b{color:var(--bad)}
+.refuse{border:1px solid var(--bad);background:var(--surface);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:8px}
+.refuse h2{color:var(--bad);font-size:18px}
+.final{font-weight:700;border-top:2px solid var(--ink);padding-top:12px;font-size:14.5px;line-height:1.8}
+.meta{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.thinking{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.thinking .row{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:14px}
+.thinking .row.on{color:var(--ink)}
+.thinking .row.ok::before{content:"✓";color:var(--ok);font-weight:700}
+.thinking .row.on::before{content:"";width:12px;height:12px;border-radius:50%;border:2px solid var(--accent);border-top-color:transparent;animation:spin .8s linear infinite}
+.thinking .row:not(.on):not(.ok)::before{content:"·";width:12px;text-align:center}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err{color:var(--bad);font-size:14px}
+/* simulated national sign-in */
+.login{direction:rtl;min-height:100%;display:flex;align-items:center;justify-content:center;padding-block:32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.lcard{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:26px 22px;display:flex;flex-direction:column;gap:16px}
+.lcard .brand{justify-content:center}
+.lhead{text-align:center;display:flex;flex-direction:column;gap:4px}
+.lhead h2{font-size:20px}
+.lhead p{margin:0;color:var(--muted);font-size:13.5px}
+.sim{font-size:12.5px;color:var(--warn);background:var(--warn-soft);border-radius:10px;padding:8px 12px;text-align:center;font-weight:500}
+.field{display:flex;flex-direction:column;gap:6px}
+.field input{border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);padding:12px 14px;font-family:var(--f-mono);font-size:18px;letter-spacing:.12em;direction:ltr;text-align:center;width:100%}
+.field .hint{font-size:12px;color:var(--muted)}
+.field .bad{font-size:12.5px;color:var(--bad)}
+.code{font-family:var(--f-display);font-weight:700;font-size:56px;line-height:1;text-align:center;color:var(--accent);background:var(--accent-soft);border-radius:16px;padding:18px 0;direction:ltr;font-variant-numeric:tabular-nums}
+.lsteps{display:flex;justify-content:center;gap:6px}
+.lsteps i{width:28px;height:4px;border-radius:2px;background:var(--line)}
+.lsteps i.on{background:var(--accent)}
+.waiting{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted);font-size:13.5px}
+.waiting::before{content:"";width:14px;height:14px;border-radius:50%;border:2px solid var(--accent);border-top-color:transparent;animation:spin .8s linear infinite}
+.link{border:0;background:none;color:var(--muted);font-size:13px;text-decoration:underline}
+.out{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:12.5px}
+.topr{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+
+</head>
+<body>
+<div class="login" id="login">
+  <div class="lcard">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none" stroke="var(--accent-ink)" stroke-width="2.4" stroke-linecap="round"><circle cx="14" cy="14" r="8"/><path d="M20 20l7 7"/><path d="M10 14h2l1.5-3 2 6 1.5-3h2"/></svg>
+      </div>
+      <div><h1>مسبار</h1><small>رادار تداخلات الغذاء والدواء</small></div>
+    </div>
+    <div class="lsteps" aria-hidden="true"><i id="ls1" class="on"></i><i id="ls2"></i><i id="ls3"></i></div>
+
+    <div id="stepId" class="field-wrap" style="display:flex;flex-direction:column;gap:16px">
+      <div class="lhead"><h2>الدخول عبر النفاذ الوطني الموحد</h2><p>لربط ملفك الدوائي من صحتي ووصفتي</p></div>
+      <div class="sim">شاشة محاكاة لأغراض العرض. لا تُدخل رقم هوية حقيقياً.</div>
+      <form class="field" id="idForm" novalidate>
+        <label class="label" for="nid">رقم الهوية الوطنية أو الإقامة</label>
+        <input id="nid" inputmode="numeric" maxlength="10" autocomplete="off" value="1000000001">
+        <span class="hint">رقم تجريبي معبأ مسبقاً. أنهِ الرقم بـ 1 أو 2 أو 3 لفتح ملف مريض الضغط أو السكري أو مميع الدم.</span>
+        <span class="bad" id="nidErr" hidden>رقم الهوية يجب أن يكون 10 أرقام ويبدأ بـ 1 أو 2.</span>
+        <button class="go" type="submit" style="margin-top:6px">تسجيل الدخول</button>
+      </form>
+    </div>
+
+    <div id="stepCode" hidden style="display:flex;flex-direction:column;gap:16px">
+      <div class="lhead"><h2>تحقق من هويتك</h2><p>افتح تطبيق النفاذ على جوالك واختر الرقم التالي</p></div>
+      <div class="code" id="code">00</div>
+      <div class="waiting" id="waitTxt">بانتظار الموافقة من التطبيق… <span id="secs" style="font-family:var(--f-mono)">60</span></div>
+      <button class="go" type="button" id="approve">محاكاة الموافقة من التطبيق</button>
+      <button class="link" type="button" id="back">رجوع وتغيير رقم الهوية</button>
+    </div>
+
+    <div id="stepSync" hidden style="display:flex;flex-direction:column;gap:16px">
+      <div class="lhead"><h2>تم التحقق بنجاح</h2><p>جارٍ سحب الملف الدوائي</p></div>
+      <div class="thinking" style="border:0;padding:0">
+        <div class="row" id="sy1">التحقق من الهوية</div>
+        <div class="row" id="sy2">الاتصال بمنصة صحتي</div>
+        <div class="row" id="sy3">سحب الوصفات النشطة من وصفتي</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app" id="app" hidden>
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none" stroke="var(--accent-ink)" stroke-width="2.4" stroke-linecap="round"><circle cx="14" cy="14" r="8"/><path d="M20 20l7 7"/><path d="M10 14h2l1.5-3 2 6 1.5-3h2"/></svg>
+      </div>
+      <div><h1>مسبار</h1><small>رادار تداخلات الغذاء والدواء</small></div>
+    </div>
+    <div class="topr"><span class="demo-tag">وضع العرض · بيانات محاكاة</span><button class="out" type="button" id="logout">تسجيل الخروج</button></div>
+  </header>
+
+  <div class="sync" role="status">
+    <span class="dot" aria-hidden="true"></span>
+    <span><b>تمت التزامنية الرقمية بنجاح بين تطبيق مسبار ومنصتي صحتي ووصفتي 🇸🇦</b></span>
+    <span class="steps" id="syncSteps">
+      <span class="step done">نفاذ</span><span class="step done">صحتي</span><span class="step done">وصفتي</span>
+    </span>
+  </div>
+
+  <div class="grid">
+    <div class="col">
+      <section class="panel" aria-labelledby="medsH">
+        <div class="ph"><h2 id="medsH">📂 الملف الدوائي النشط</h2><span class="label">Retrieved Active Medications</span></div>
+        <div class="profiles" id="profiles" role="group" aria-label="مستفيد تجريبي"></div>
+        <div class="patient" id="patient"></div>
+        <ul class="meds" id="meds"></ul>
+      </section>
+
+      <section class="panel" aria-labelledby="inH">
+        <h2 id="inH" hidden>المدخلات</h2>
+        <div class="seg" role="tablist">
+          <button role="tab" id="tabMeal" aria-selected="true">فحص وقائي<small>قبل الأكل</small></button>
+          <button role="tab" id="tabSym" aria-selected="false">فحص الأعراض<small>بعد الأكل</small></button>
+        </div>
+
+        <div class="redflags" id="redflags" hidden>
+          <span class="num">997</span>
+          <span>ألم أو ضغط في الصدر، ضيق تنفس، إغماء، ضعف أو تنميل في جهة واحدة، صعوبة في الكلام: اتصل بالهلال الأحمر فوراً.</span>
+        </div>
+
+        <label class="label" for="input" id="inLabel">صف الوجبة أو صوّرها</label>
+        <textarea id="input" placeholder="مثال: كبسة دجاج مع سلطة وكوب لبن"></textarea>
+
+        <div class="tools">
+          <label class="tbtn" id="photoBtn" for="photo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="14" rx="3"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg>
+            صورة الوجبة
+          </label>
+          <input type="file" id="photo" accept="image/*" hidden>
+          <button class="tbtn" id="micBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>
+            <span id="micTxt">تسجيل صوتي</span>
+          </button>
+        </div>
+        <div class="thumb" id="thumb" hidden><img id="thumbImg" alt="صورة الوجبة المرفقة"><span>صورة مرفقة</span><button type="button" id="rmPhoto">إزالة</button></div>
+
+        <div class="presets" id="presets"></div>
+
+        <div class="engine">
+          <span>محرك التحليل:</span>
+          <button class="chip" id="engLive" aria-pressed="true">ذكاء اصطناعي حي</button>
+          <button class="chip" id="engDemo" aria-pressed="false">نتيجة عرض جاهزة</button>
+        </div>
+        <button class="go" id="go">تشغيل رادار مسبار</button>
+        <button class="stop" id="stop" hidden>إيقاف التحليل</button>
+      </section>
+    </div>
+
+    <main class="dash" id="dash" aria-live="polite"></main>
+  </div>
+</div>
+
+<script>
+const PROFILES = {
+  A:{tab:"مريض ضغط",name:"عبدالله، 58 سنة",cond:"ارتفاع ضغط الدم",
+     meds:[{ar:"لوسارتان",en:"Losartan",dose:"50 mg",freq:"مرة يومياً صباحاً",src:"وصفتي"},
+           {ar:"أملوديبين",en:"Amlodipine",dose:"5 mg",freq:"مرة يومياً",src:"وصفتي"}],
+     meal:"سلطة فواكه فيها جريب فروت، صدر دجاج مشوي، رز أبيض",
+     sym:"أنا كتبت لكم قبل شوي إني أخذت دواء الضغط وأكلت معاه أكله مالح والحين أحس بدوخة شديدة ورفرفة بقلبي، وش أسوي؟"},
+  B:{tab:"مريض سكري",name:"نورة، 49 سنة",cond:"سكري النوع الثاني وارتفاع الكوليسترول",
+     meds:[{ar:"ميتفورمين",en:"Metformin",dose:"1000 mg",freq:"مرتين يومياً مع الأكل",src:"وصفتي"},
+           {ar:"جليكلازيد ممتد المفعول",en:"Gliclazide MR",dose:"60 mg",freq:"مرة صباحاً",src:"وصفتي"},
+           {ar:"أتورفاستاتين",en:"Atorvastatin",dose:"20 mg",freq:"مرة مساءً",src:"صحتي"}],
+     meal:"فطور: فول بالزيت، خبز تميس، 5 حبات تمر، شاي بالحليب",
+     sym:"أخذت حبوب السكر الصبح وما فطرت زين، والحين يدي ترجف وأتعرق وقلبي يدق بسرعة"},
+  C:{tab:"مميع دم",name:"خالد، 66 سنة",cond:"رجفان أذيني وقصور الغدة الدرقية",
+     meds:[{ar:"وارفارين",en:"Warfarin",dose:"5 mg",freq:"مرة مساءً",src:"وصفتي"},
+           {ar:"ليفوثيروكسين",en:"Levothyroxine",dose:"100 mcg",freq:"صباحاً على الريق",src:"وصفتي"}],
+     meal:"فطور مع حبة الغدة: سلطة سبانخ وجرجير، كوب حليب، قهوة",
+     sym:"أنا على مميع الدم وأكلت أكل فيه ثوم وزنجبيل كثير، والحين لاحظت نزيف من اللثة وكدمات بيدي"}
+};
+
+const FALLBACK = {
+ A_meal:{urgency:"none",signal:"yellow",
+  signal_note:"تداخل متوسط. الفصل الزمني لا يكفي هنا، لأن أثر الجريب فروت على الإنزيم قد يستمر حتى 24 ساعة؛ الأفضل استبداله.",
+  detected:["جريب فروت: فورانوكومارينات (بيرغاموتين)","بوتاسيوم متوسط من الفاكهة","بروتين قليل الدهون (دجاج مشوي)","نشويات مكررة (رز أبيض)"],
+  links:["فورانوكومارينات الجريب فروت تثبط إنزيم CYP3A4 في جدار الأمعاء، وهو المسؤول عن تكسير أملوديبين، فيرتفع تركيزه في الدم بدرجة متوسطة.","لوسارتان يتأثر بدرجة أقل، لكنه يحبس البوتاسيوم، فتراكم البوتاسيوم من الفواكه يستحق الانتباه عند وجود ضعف في الكلى."],
+  causes:[{t:"ارتفاع مستوى أملوديبين",d:"يبدو متسقاً مع زيادة احتمال هبوط الضغط والدوخة وتورم الكاحلين، خصوصاً مع التكرار اليومي."},
+          {t:"أثر تراكمي مع الاستمرار",d:"تثبيط الإنزيم يتجدد مع كل حصة، فتناوله يومياً يرفع المستوى أكثر من حصة واحدة عابرة."},
+          {t:"حمل بوتاسيوم إضافي مع لوسارتان",d:"منخفض في هذه الكمية لمعظم الناس، ويظهر كخطر حقيقي فقط مع أمراض الكلى أو بدائل الملح البوتاسيومية."}],
+  actions:[{t:"استبدل الجريب فروت",d:"التفاح أو الفراولة أو البرتقال الحلو أو البطيخ بدائل مناسبة لنفس الطبق."},
+           {t:"احتفظ ببقية الوجبة",d:"الدجاج المشوي والرز لا يتعارضان مع أدويتك. خفف الملح المضاف."},
+           {t:"إذا كان الجريب فروت عادة يومية",d:"قس الضغط لعدة أيام وأخبر الصيدلي أو الطبيب، فقد يحتاج الأمر مراجعة."}]},
+ A_sym:{urgency:"urgent",signal:"red",
+  signal_note:"الحالة تحتاج متابعة فورية. ليس السبب بالضرورة تداخلاً شديداً، لكن اجتماع الدوخة الشديدة مع خفقان القلب لا يُقيَّم منزلياً بثقة.",
+  detected:["دوخة شديدة","إحساس بخفقان أو رفرفة في القلب","بدأت بعد دواء الضغط مع وجبة عالية الملوحة"],
+  links:["الوجبة المالحة غنية بالصوديوم، وقد تحتوي على ملح قليل الصوديوم (كلوريد البوتاسيوم) أو مرق جاهز، وهذا قد يتداخل مع احتباس البوتاسيوم الذي يسببه لوسارتان.","أملوديبين يوسّع الأوعية، والدم يتجه للجهاز الهضمي بعد الأكل، فقد ينخفض الضغط عند الوقوف ويتسارع النبض تعويضياً."],
+  causes:[{t:"هبوط ضغط وضعي مع تسارع نبض تعويضي",d:"يبدو متسقاً مع أثر أملوديبين، ويظهر عادة كدوخة عند القيام المفاجئ بعد الأكل مع خفقان."},
+          {t:"ارتفاع البوتاسيوم في الدم",d:"يشترك في خصائصه مع الجمع بين لوسارتان ومصدر بوتاسيوم مرتفع. قد يسبب اضطراباً في نظم القلب، وهو الاحتمال الأهم استبعاده طبياً."},
+          {t:"ارتفاع مؤقت في الضغط أو جفاف نسبي",d:"الحمل الملحي العالي قد يرفع الضغط ويسبب صداعاً وخفقاناً، وقلة السوائل قد تزيد الدوخة."}],
+  actions:[{t:"اجلس أو استلقِ الآن",d:"ارفع ساقيك قليلاً، ولا تقف فجأة ولا تقد السيارة. قس الضغط والنبض إن توفر جهاز وسجّل الأرقام."},
+           {t:"لا تغيّر جرعاتك",d:"لا تأخذ جرعة إضافية ولا تتخطَّ جرعة. تجنب أي ملح بديل والمنبهات، واشرب ماءً باعتدال ما لم يكن لديك تقييد للسوائل."},
+           {t:"تواصل مع جهة طبية الآن",d:"إذا استمر الخفقان أو الدوخة أكثر من دقائق قليلة أو كان النبض غير منتظم، توجه للطوارئ أو اتصل بـ 997. للاستشارة غير الطارئة: 937."}]},
+ B_meal:{urgency:"none",signal:"yellow",
+  signal_note:"تداخل وظيفي وليس كيميائياً: الوجبة ترفع السكر بعد الأكل وتعاكس هدف العلاج، والحل تعديل الكمية لا الفصل الزمني.",
+  detected:["سكريات سريعة من التمر (جلوكوز وفركتوز)","نشويات مكررة من خبز التميس","بروتين وألياف ذائبة من الفول","كافيين وتانينات بكمية قليلة في الشاي"],
+  links:["لا يوجد تداخل كيميائي مباشر مع ميتفورمين أو جليكلازيد، لكن الحمل السكري المرتفع يقلل الاستفادة منهما.","ألياف الفول تبطئ امتصاص السكر جزئياً. أتورفاستاتين لا يتأثر بهذه الوجبة."],
+  causes:[{t:"ارتفاع سكر ما بعد الأكل",d:"خمس حبات تمر مع رغيف تميس كامل تشكل حملاً سكرياً عالياً في وجبة واحدة."},
+          {t:"خطر الهبوط إذا تأخرت الوجبة",d:"جليكلازيد يعمل حتى لو لم تأكل؛ أخذه ثم تأجيل الفطور قد يسبب هبوطاً لاحقاً."},
+          {t:"اضطراب هضمي",d:"ميتفورمين مع وجبة غنية بالزيت قد يسبب انتفاخاً أو إسهالاً عند بعض الأشخاص."}],
+  actions:[{t:"قلل التمر والتميس",d:"حبتان أو ثلاث تمر، ونصف رغيف تميس أو خبز بر بدلاً من الرغيف الكامل."},
+           {t:"خذ الدواء مع الوجبة",d:"ميتفورمين وجليكلازيد مع الفطور نفسه، لا قبله بفترة طويلة."},
+           {t:"قس السكر بعد ساعتين",d:"إذا تجاوز القياس الهدف الذي حدده طبيبك بانتظام، شارك الأرقام في موعدك القادم."}]},
+ B_sym:{urgency:"urgent",signal:"red",
+  signal_note:"الأعراض تبدو متسقة مع هبوط السكر، وهو يحتاج تصرفاً خلال دقائق.",
+  detected:["رجفة في اليدين","تعرق","خفقان سريع","بعد جرعة صباحية مع فطور ناقص"],
+  links:["جليكلازيد يحفز إفراز الأنسولين بغض النظر عن كمية الأكل، فإذا كان الفطور قليل النشويات قد ينخفض السكر.","ميتفورمين وحده نادراً ما يسبب الهبوط، لكنه يضيف إلى أثر جليكلازيد."],
+  causes:[{t:"هبوط سكر الدم",d:"الرجفة والتعرق والخفقان بعد دواء محفز للأنسولين ووجبة ناقصة تظهر كصورة نموذجية للهبوط."},
+          {t:"أثر الكافيين أو القلق على معدة فارغة",d:"قد يسبب رجفة وخفقاناً مشابهين، لكنه لا يُفترض قبل قياس السكر."},
+          {t:"اضطراب نظم أو جفاف",d:"أقل احتمالاً، ويستحق التقييم إذا لم تتحسن الأعراض بعد علاج الهبوط."}],
+  actions:[{t:"قس السكر فوراً",d:"إذا كان أقل من 70 أو لا يوجد جهاز، تناول 15 غرام سكر سريع: نصف كوب عصير أو ملعقة كبيرة عسل."},
+           {t:"قاعدة 15/15",d:"أعد القياس بعد 15 دقيقة وكرر إذا بقي منخفضاً، ثم تناول وجبة فيها نشويات وبروتين."},
+           {t:"متى تتصل بـ 997",d:"إذا حدث تشوش أو فقدان وعي أو لم تتحسن الأعراض. لا تُعطَ أي طعام بالفم وأنت غير واعٍ. أخبر طبيبك بالحادثة لمراجعة جرعة جليكلازيد."}]},
+ C_meal:{urgency:"none",signal:"yellow",
+  signal_note:"تداخلان متوسطان: فيتامين K مع الوارفارين يُدار بثبات الكمية، والحليب والقهوة مع حبة الغدة يُداران بالفصل الزمني.",
+  detected:["فيتامين K1 مرتفع جداً (سبانخ وجرجير)","كالسيوم (الحليب)","كافيين (القهوة)"],
+  links:["فيتامين K يعاكس آلية عمل الوارفارين، والتغير المفاجئ في كميته يغيّر قيمة INR.","الكالسيوم والقهوة يقللان امتصاص ليفوثيروكسين إذا أُخذا قريباً منه."],
+  causes:[{t:"انخفاض فعالية الوارفارين",d:"إذا كانت كمية الورقيات أكبر من المعتاد فقد ينخفض INR ويقل الأثر الوقائي من الجلطات."},
+          {t:"ضعف امتصاص هرمون الغدة",d:"الحليب والقهوة مع حبة الصباح يقللان ما يصل منها للدم."},
+          {t:"تذبذب INR",d:"تغيير النظام الغذائي بين أسبوع وآخر يجعل ضبط جرعة الوارفارين أصعب."}],
+  actions:[{t:"ثبّت كمية الورقيات",d:"لا تمنعها، بل اجعل كميتها الأسبوعية متقاربة."},
+           {t:"افصل حبة الغدة",d:"على الريق، ثم انتظر 30 إلى 60 دقيقة قبل القهوة والأكل، و4 ساعات قبل الحليب أو مكملات الكالسيوم."},
+           {t:"أبلغ عيادة التخثر",d:"أخبرهم بأي تغيير غذائي كبير ليُضبط موعد فحص INR."}]},
+ C_sym:{urgency:"urgent",signal:"red",
+  signal_note:"نزيف اللثة والكدمات مع الوارفارين يحتاجان تقييماً طبياً اليوم.",
+  detected:["نزيف من اللثة","كدمات غير مبررة في اليد","كميات كبيرة من الثوم والزنجبيل"],
+  links:["الثوم والزنجبيل بكميات كبيرة قد يملكان أثراً مضاداً للصفائح يضاف إلى أثر الوارفارين، والأدلة على ذلك محدودة.","السبب الأكثر شيوعاً لهذه الصورة هو ارتفاع INR فوق المدى العلاجي."],
+  causes:[{t:"ارتفاع INR",d:"يبدو الاحتمال الأهم، وقد يحدث مع تغيير في الأكل أو الأدوية أو المرض."},
+          {t:"أثر إضافي من الثوم والزنجبيل",d:"يشترك في خصائصه مع المواد المضادة للصفائح، فيزيد قابلية النزف."},
+          {t:"سبب آخر",d:"دواء جديد مثل مسكنات إيبوبروفين أو مضاد حيوي، أو التهاب لثة موضعي."}],
+  actions:[{t:"تواصل مع عيادة التخثر أو طبيبك اليوم",d:"قبل موعد الجرعة القادمة، لفحص INR وتحديد ما يلزم."},
+           {t:"إسعاف اللثة",d:"اضغط عليها بشاش نظيف، وتجنب الأسبرين والإيبوبروفين، وخفف الثوم والزنجبيل الآن."},
+           {t:"متى تتصل بـ 997",d:"دم في البول أو براز أسود، قيء فيه دم، صداع شديد مفاجئ، أو نزيف لا يتوقف."}]}
+};
+
+const RED_FLAGS = /(ألم|الم|ضغط|ضيق)\s*(في|ب)?\s*(ال)?صدر|ضيق\s*(في\s*)?(ال)?تنفس|ما\s*(اقدر|أقدر)\s*(اتنفس|أتنفس)|إغماء|اغماء|أغمي|اغمي|طحت|تنميل|شلل|ثقل\s*(في\s*)?(ال)?لسان|صعوبة\s*(في\s*)?(ال)?كلام|قيء\s*(فيه\s*)?دم|استفراغ\s*دم|براز\s*أسود|تشنج/;
+const INFANT = /رضيع|رضيعة|رُضّع|الرضع|مولود|حديث(ي)?\s*الولادة|حليب\s*(ال)?(أطفال|اطفال|رضع)|بيبي|infant|newborn|baby/i;
+
+const $ = id => document.getElementById(id);
+const el = (t, c, txt) => { const e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; };
+const FINAL = "تنبيه هام: يرجى التحقق من المطبوعات والملصقات الفعلية لعلب الأدوية للتأكد من مطابقة البيانات المسحوبة من منصة صحتي، واستشارة الطبيب أو الصيدلاني فوراً قبل أي تغيير في نظامك الغذائي الدوائي.";
+
+let state = {p:"A", mode:"meal", image:null, live:true};
+let sampleFn = null, canImages = false, ctl = null;
+
+function save(){ try{ localStorage.setItem("misbar", JSON.stringify({p:state.p, mode:state.mode, live:state.live})); }catch(e){} }
+try{ const s = JSON.parse(localStorage.getItem("misbar")||"null"); if (s && PROFILES[s.p]) { state.p = s.p; state.mode = s.mode==="sym"?"sym":"meal"; state.live = s.live!==false; } }catch(e){}
+
+function renderProfile(){
+  const P = PROFILES[state.p];
+  const pr = $("profiles"); pr.textContent = "";
+  for (const k of Object.keys(PROFILES)) {
+    const b = el("button","chip",PROFILES[k].tab); b.type="button";
+    b.setAttribute("aria-pressed", String(k===state.p));
+    b.onclick = () => { state.p = k; save(); renderProfile(); renderMode(true); renderEmpty(); };
+    pr.append(b);
+  }
+  const pt = $("patient"); pt.textContent = "";
+  const a = el("span"); a.append("المستفيد: ", el("b",null,P.name)); pt.append(a, el("span",null,P.cond));
+  const ul = $("meds"); ul.textContent = "";
+  for (const m of P.meds) {
+    const li = el("li","med");
+    const ic = el("div","pill-ic"); ic.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="4" transform="rotate(-35 12 12)"/><path d="M9.6 8.6l4.8 6.8" /></svg>';
+    const mid = el("div"); const n = el("div","n",m.ar); n.append(el("span",null,m.en));
+    mid.append(n, el("div","s",m.freq));
+    const r = el("div"); r.append(el("div","dose",m.dose), el("div","src","من "+m.src));
+    li.append(ic, mid, r); ul.append(li);
+  }
+}
+
+function renderMode(resetText){
+  const meal = state.mode==="meal";
+  $("tabMeal").setAttribute("aria-selected", String(meal));
+  $("tabSym").setAttribute("aria-selected", String(!meal));
+  $("redflags").hidden = meal;
+  $("inLabel").textContent = meal ? "صف الوجبة أو صوّرها قبل الأكل" : "صف الأعراض كتابةً أو بتسجيل صوتي";
+  $("input").placeholder = meal ? "مثال: كبسة دجاج مع سلطة وكوب لبن" : "مثال: أكلت قبل ساعة والحين أحس بدوخة…";
+  $("photoBtn").hidden = !canImages;
+  if (resetText) $("input").value = "";
+  const P = PROFILES[state.p];
+  const box = $("presets"); box.textContent = "";
+  const b = el("button","preset"); b.type="button";
+  b.append(el("b",null, meal ? "سيناريو تجريبي: " : "تسجيل تجريبي: "), meal ? P.meal : "«"+P.sym+"»");
+  b.onclick = () => { $("input").value = meal ? P.meal : P.sym; };
+  box.append(b);
+}
+
+function renderEmpty(){
+  const d = $("dash"); d.textContent = "";
+  const e = el("div","empty");
+  e.append(el("h2",null,"🚨 رادار مسبار جاهز"));
+  e.append(el("p",null,"اختر فحصاً وقائياً قبل الأكل، أو صف أعراضك بعد الأكل. سيقارن مسبار مكونات الوجبة أو الأعراض بأدويتك المسحوبة، ويعرض مؤشر الأمان وثلاثة احتمالات مسببة وثلاث خطوات تصرف."));
+  const s = el("div","signals");
+  for (const [c,t] of [["--ok","أخضر: لا تداخل معروف"],["--warn","أصفر: تداخل متوسط"],["--bad","أحمر: خطر كيميائي"]]) { const sp = el("span"); const i = el("i"); i.style.background = `var(${c})`; sp.append(i,t); s.append(sp); }
+  e.append(s);
+  d.append(e);
+}
+
+function presetKey(){
+  const P = PROFILES[state.p], v = $("input").value.trim();
+  if (state.mode==="meal" && v===P.meal) return state.p+"_meal";
+  if (state.mode==="sym" && v===P.sym) return state.p+"_sym";
+  return null;
+}
+
+function buildPrompt(text){
+  const P = PROFILES[state.p];
+  const meds = P.meds.map(m=>`- ${m.ar} (${m.en}) ${m.dose}، ${m.freq}`).join("\n");
+  return `أنت محرك "مسبار" للتحليل الدوائي الغذائي، وتتصرف كصيدلي إكلينيكي سعودي دافئ ودقيق. هذا عرض تجريبي ببيانات محاكاة.
+الملف الدوائي النشط للمستفيد (${P.name}، ${P.cond}):
+${meds}
+
+نوع الفحص: ${state.mode==="meal" ? "فحص وقائي قبل الأكل لوجبة" : "فحص أعراض طارئ بعد الأكل (مدخل صوتي مفرغ أو نص)"}.
+مدخل المستخدم: """${text || "(لا يوجد نص؛ حلل الصورة المرفقة للوجبة)"}"""
+${state.image ? "مرفق صورة للوجبة: حدد مكوناتها المرئية." : ""}
+
+القواعد:
+- لغة تحوطية دائماً (يبدو متسقاً مع، يشترك في خصائص مع، يظهر كـ). لا تشخيص قطعي.
+- اذكر 3 احتمالات مسببة مختلفة على الأقل، و3 خطوات تصرف آمنة على الأقل.
+- إذا تعلق الطلب برضيع أو حديث ولادة: refused=true.
+- إذا وُجدت علامة خطر (ألم صدر، ضيق تنفس، إغماء، ضعف أو تنميل بجهة، صعوبة كلام، نزيف شديد، قيء دموي، تشوش): urgency="emergency" واذكر الاتصال بـ 997.
+- الضوء الأصفر يعني تداخلاً متوسطاً، وحدد العلاج المناسب لنوعه (فصل زمني فقط حين يفيد فعلاً، أو استبدال، أو ثبات الكمية).
+- لا تَعِد بأمان مطلق؛ الأخضر يعني لا تداخلات معروفة بناء على البيانات المتاحة.
+- لا تطلب تغيير الجرعات؛ وجّه للطبيب أو الصيدلي. رقم الاستشارات غير الطارئة 937.
+- جمل قصيرة واضحة مناسبة لشخص تحت الضغط.
+
+أجب بكائن JSON فقط بهذا الشكل:
+{"refused":false,"urgency":"none|urgent|emergency","signal":"green|yellow|red","signal_note":"جملة أو جملتان",
+"detected":["مكون أو عرض مع تفصيل حيوي قصير", "..."],
+"links":["رابط كيميائي محتمل بين المكون/العرض ودواء محدد", "..."],
+"causes":[{"t":"عنوان قصير","d":"شرح تحوطي"}],
+"actions":[{"t":"عنوان قصير","d":"خطوة عملية"}]}`;
+}
+
+function setThinking(){
+  const d = $("dash"); d.textContent = "";
+  const t = el("div","thinking");
+  const rows = ["مطابقة الملف الدوائي المسحوب","تفكيك المدخلات (نص/صوت/صورة)","فحص التداخلات الكيميائية","صياغة بروتوكول التصرف"].map((x,i)=>{ const r = el("div","row"+(i===0?" on":""),x); t.append(r); return r; });
+  d.append(t);
+  let i = 0; const iv = setInterval(()=>{ if (i < rows.length-1) { rows[i].className="row ok"; i++; rows[i].className="row on"; } else clearInterval(iv); }, 2200);
+  return () => clearInterval(iv);
+}
+
+function renderResult(r, meta){
+  const d = $("dash"); d.textContent = "";
+  const text = $("input").value;
+  if (r.refused) return renderRefusal();
+  let urgency = r.urgency;
+  if (state.mode==="sym" && RED_FLAGS.test(text)) urgency = "emergency";
+
+  if (urgency==="emergency") {
+    const e = el("div","emerg"); e.setAttribute("role","alert");
+    e.append(el("b",null,"⛑️ علامات خطر محتملة: اتصل بالهلال الأحمر الآن"), el("div","big","997"), el("span",null,"لا تقُد السيارة بنفسك. ابقَ جالساً أو مستلقياً حتى يصل المسعفون، وأبقِ علب أدويتك قريبة."));
+    d.append(e);
+  } else if (urgency==="urgent") {
+    const u = el("div","urgent"); u.append(el("b",null,"⛑️ فحص الطوارئ أولاً: "), "إذا ظهر ألم في الصدر، ضيق تنفس، إغماء، ضعف أو تنميل في جهة واحدة، أو صعوبة في الكلام، فاتصل بـ 997 فوراً.");
+    d.append(u);
+  }
+
+  const sec = (title) => { const s = el("section","sec"); s.append(el("h3",null,title)); d.append(s); return s; };
+
+  const s1 = sec("🎙️ تحليل المدخلات " + (state.mode==="meal" ? (state.image ? "(صورة/نص)" : "(نص)") : "(صوت/نص)"));
+  s1.append(el("div","label", state.mode==="meal" ? "المكونات المرصودة" : "الأعراض المرصودة"));
+  const tg = el("div","tags"); (r.detected||[]).forEach(x=>tg.append(el("span","tag",x))); s1.append(tg);
+  s1.append(el("div","label","الروابط الكيميائية المحتملة"));
+  const ul = el("ul"); (r.links||[]).forEach(x=>ul.append(el("li",null,x))); s1.append(ul);
+
+  const sig = ["green","yellow","red"].includes(r.signal) ? r.signal : "yellow";
+  const L = {green:"🟢 الضوء الأخضر: لا تداخلات معروفة",yellow:"🟡 الضوء الأصفر: تحذير، تداخل متوسط",red:"🔴 الضوء الأحمر: خطر يحتاج تصرفاً"}[sig];
+  const lab = el("div","label","🚦 مؤشر الأمان اللحظي"); d.append(lab);
+  const li = el("div","light "+sig); const txt = el("div"); txt.append(el("b",null,L), el("p",null,r.signal_note||""));
+  li.append(el("div","lamp"), txt); d.append(li);
+
+  const s2 = sec("🔍 التفكيك والتشخيص الإكلينيكي التحوطي (3 احتمالات مسببة)");
+  const ol = el("ol"); (r.causes||[]).forEach(c=>{ const x = el("li"); const w = el("div"); w.append(el("b",null,c.t||""), el("span",null,c.d||"")); x.append(w); ol.append(x); }); s2.append(ol);
+
+  const s3 = sec("🛠️ بروتوكول التصرف والحلول السلوكية (3 خطوات آمنة فوراً)");
+  const ol2 = el("ol"); (r.actions||[]).forEach(c=>{ const x = el("li"); const w = el("div"); w.append(el("b",null,c.t||""), el("span",null,c.d||"")); x.append(w); ol2.append(x); }); s3.append(ol2);
+
+  const f = el("p","final",FINAL); d.append(f);
+  const m = el("div","meta"); m.append(el("span",null,meta)); m.append(el("span",null,"مسبار أداة توعوية ولا يغني عن الطبيب.")); d.append(m);
+}
+
+function renderRefusal(){
+  const d = $("dash"); d.textContent = "";
+  const r = el("div","refuse"); r.setAttribute("role","alert");
+  r.append(el("h2",null,"لا يحلل مسبار حالات الرضع"));
+  r.append(el("p",null,"أدوية الرضع وغذاؤهم يحتاجان تقييماً مباشراً من طبيب الأطفال أو الصيدلي، لأن الجرعات والتداخلات تختلف كثيراً عن البالغين. إذا ظهر على الرضيع خمول أو صعوبة تنفس أو ازرقاق أو قيء متكرر، اتصل بـ 997 فوراً، وللاستشارة غير الطارئة 937."));
+  d.append(r, el("p","final",FINAL));
+}
+
+function renderError(msg){
+  const d = $("dash"); d.textContent = "";
+  const e = el("div","empty"); e.append(el("h2",null,"تعذّر التحليل الآن"), el("p","err",msg));
+  d.append(e);
+}
+
+async function analyze(){
+  const text = $("input").value.trim();
+  if (INFANT.test(text)) return renderRefusal();
+  if (!text && !state.image) { $("input").focus(); return renderError("اكتب وصف الوجبة أو الأعراض، أو اختر السيناريو التجريبي."); }
+  const key = presetKey();
+  const useLive = state.live && sampleFn;
+  if (!useLive) {
+    if (key) return renderResult(FALLBACK[key], "نتيجة عرض جاهزة معدّة مسبقاً لهذا السيناريو.");
+    return renderError(sampleFn ? "وضع النتيجة الجاهزة يعمل مع السيناريو التجريبي فقط. اختر السيناريو أو فعّل الذكاء الاصطناعي الحي." : "التحليل الحي غير متاح في هذا العرض. اختر السيناريو التجريبي لعرض نتيجة جاهزة.");
+  }
+  const go = $("go"); go.disabled = true; go.textContent = "جارٍ التحليل…"; $("stop").hidden = false;
+  const stopAnim = setThinking();
+  ctl = new AbortController();
+  try {
+    const opts = { signal: ctl.signal, modelTier: "default", effort: "low" };
+    if (state.image && canImages) opts.images = state.image;
+    const r = await sampleFn.json(buildPrompt(text), opts);
+    if (!r || typeof r !== "object") throw {code:"invalid_json"};
+    renderResult(r, "تحليل حي بالذكاء الاصطناعي.");
+  } catch (e) {
+    const c = e && e.code;
+    if (c === "cancelled") { renderEmpty(); }
+    else if (key) renderResult(FALLBACK[key], "تعذّر التحليل الحي، فعُرضت نتيجة العرض الجاهزة لهذا السيناريو.");
+    else if (c === "not_granted" || c === "sampling_disabled") { sampleFn = null; renderError("لم يُسمح للصفحة باستخدام Claude. اختر السيناريو التجريبي لعرض نتيجة جاهزة."); }
+    else if (c === "rate_limited") renderError("طلبات كثيرة في وقت قصير. انتظر قليلاً ثم أعد المحاولة.");
+    else if (c === "refused") renderError("تعذّر تحليل هذا المدخل. أعد صياغته بوصف أوضح للوجبة أو الأعراض.");
+    else if (c === "image_rejected") renderError("الصورة غير مقبولة. جرّب صورة أخرى بصيغة JPG أو PNG.");
+    else renderError("حدث انقطاع أثناء التحليل. اضغط تشغيل الرادار للمحاولة مرة أخرى.");
+  } finally {
+    stopAnim(); go.disabled = false; go.textContent = "تشغيل رادار مسبار"; $("stop").hidden = true;
+  }
+}
+
+// voice simulation (microphone access is not available inside the demo page)
+let recT = null;
+$("micBtn").onclick = () => {
+  const b = $("micBtn");
+  if (recT) return;
+  if (state.mode !== "sym") { state.mode = "sym"; save(); renderMode(true); }
+  b.classList.add("rec");
+  const txt = $("micTxt"); txt.textContent = "";
+  const w = el("span","wave"); for (let i=0;i<7;i++) w.append(el("i")); txt.append(w, " يسجّل…");
+  recT = setTimeout(()=>{
+    b.classList.remove("rec"); txt.textContent = "تسجيل صوتي"; recT = null;
+    $("input").value = PROFILES[state.p].sym;
+  }, 2600);
+};
+
+$("photo").onchange = e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  state.image = f; $("thumbImg").src = URL.createObjectURL(f); $("thumb").hidden = false;
+};
+$("rmPhoto").onclick = () => { state.image = null; $("photo").value = ""; $("thumb").hidden = true; };
+$("tabMeal").onclick = () => { state.mode = "meal"; save(); renderMode(true); };
+$("tabSym").onclick = () => { state.mode = "sym"; save(); renderMode(true); };
+$("engLive").onclick = () => { state.live = true; save(); syncEngine(); };
+$("engDemo").onclick = () => { state.live = false; save(); syncEngine(); };
+$("go").onclick = analyze;
+$("stop").onclick = () => ctl && ctl.abort();
+
+function syncEngine(){
+  $("engLive").setAttribute("aria-pressed", String(state.live));
+  $("engDemo").setAttribute("aria-pressed", String(!state.live));
+  $("engLive").hidden = !sampleFn;
+}
+
+renderProfile(); renderMode(false); syncEngine();
+// open in a realistic state: the main demo scenario, pre-filled
+if (state.mode==="sym") $("input").value = PROFILES[state.p].sym;
+renderResult(FALLBACK[state.p + (state.mode==="sym"?"_sym":"_meal")], "مثال جاهز: هذا شكل لوحة النتائج. غيّر المدخلات واضغط تشغيل الرادار.");
+if (state.mode==="meal") $("input").value = PROFILES[state.p].meal;
+
+// ---- simulated national sign-in (nothing entered here is stored or sent) ----
+let codeTimer = null;
+function showStep(n){
+  $("stepId").hidden = n!==1; $("stepCode").hidden = n!==2; $("stepSync").hidden = n!==3;
+  ["ls1","ls2","ls3"].forEach((id,i)=>$(id).classList.toggle("on", i < n));
+}
+$("idForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const v = $("nid").value.trim();
+  const ok = /^[12]\d{9}$/.test(v);
+  $("nidErr").hidden = ok;
+  if (!ok) { $("nid").focus(); return; }
+  const last = Number(v.slice(-1));
+  state.p = last===2 ? "B" : last===3 ? "C" : "A";
+  $("code").textContent = String(10 + Math.floor(Math.random()*90));
+  showStep(2);
+  let s = 60; $("secs").textContent = s;
+  clearInterval(codeTimer);
+  codeTimer = setInterval(()=>{ s--; $("secs").textContent = s; if (s<=0) { clearInterval(codeTimer); showStep(1); $("nidErr").hidden=false; $("nidErr").textContent="انتهت مهلة التحقق. أعد المحاولة."; } }, 1000);
+});
+$("nid").addEventListener("input", () => { $("nid").value = $("nid").value.replace(/\D/g,"").slice(0,10); $("nidErr").hidden = true; $("nidErr").textContent = "رقم الهوية يجب أن يكون 10 أرقام ويبدأ بـ 1 أو 2."; });
+$("back").onclick = () => { clearInterval(codeTimer); showStep(1); };
+$("approve").onclick = () => {
+  clearInterval(codeTimer); showStep(3);
+  const rows = ["sy1","sy2","sy3"].map($);
+  rows.forEach(r=>r.className="row"); rows[0].className = "row on";
+  let i = 0;
+  const iv = setInterval(()=>{
+    rows[i].className = "row ok"; i++;
+    if (i < rows.length) { rows[i].className = "row on"; return; }
+    clearInterval(iv);
+    setTimeout(enterApp, 400);
+  }, 700);
+};
+function enterApp(){
+  save(); renderProfile(); renderMode(true);
+  $("input").value = state.mode==="sym" ? PROFILES[state.p].sym : PROFILES[state.p].meal;
+  renderResult(FALLBACK[state.p + (state.mode==="sym"?"_sym":"_meal")], "مثال جاهز: هذا شكل لوحة النتائج. غيّر المدخلات واضغط تشغيل الرادار.");
+  $("login").hidden = true; $("app").hidden = false; window.scrollTo(0,0);
+}
+$("logout").onclick = () => { $("app").hidden = true; $("login").hidden = false; showStep(1); };
+
+(async () => {
+  try {
+    if (!window.claude || !claude.use) return;
+    sampleFn = await claude.use("sample");
+    if (sampleFn) {
+      const lim = await sampleFn.limits().catch(()=>null);
+      canImages = !!(lim && lim.images);
+      if (canImages && lim.images.mediaTypes) $("photo").accept = lim.images.mediaTypes.join(",");
+    }
+  } catch(e) { sampleFn = null; }
+  if (!sampleFn) state.live = false;
+  syncEngine(); $("photoBtn").hidden = !canImages;
+})();
+</script>
+
+</body>
+</html>
